@@ -1,7 +1,8 @@
 #ifndef _INTERNAL_RPC_DECOMP_TYPE_DEFS_H_
 #define _INTERNAL_RPC_DECOMP_TYPE_DEFS_H_
 
-
+#include <iostream>
+#include <fstream>
 #include <string>
 #include <list>
 #include <vector>
@@ -44,6 +45,14 @@ typedef struct _RpcDecompilerCtxt_T{
 #define RPC_PRINT_FN	pRpcDecompilerCtxt->pRpcViewHelper->RpcPrint
 #define RPC_ALLOC_FN	pRpcDecompilerCtxt->pRpcViewHelper->RpcAlloc
 #define RPC_FREE_FN		pRpcDecompilerCtxt->pRpcViewHelper->RpcFree
+#define RPC_EXPORT_INTERFACE(x, y) {\
+	std::ofstream ofile;			\
+	ofile.open(x, std::ios::app);	\
+	ofile << y;						\
+	ofile.close();					\
+}\
+//clean & neat solution...!
+
 #define RPC_GET_PROCESS_DATA( pAddress, pBuffer, BufferLength)												\
 {																											\
 	/*BOOL	bResult;*/																						\

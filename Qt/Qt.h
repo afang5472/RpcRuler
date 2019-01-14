@@ -44,5 +44,5 @@
 #include <QtWidgets/QDialogButtonBox>
 #include <QtCore/QSignalMapper>
 #include <QtWinExtras/qwinfunctions.h>
-
+#include <QtWidgets/QFileDialog>
 #endif

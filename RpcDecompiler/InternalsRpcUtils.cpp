@@ -1,7 +1,15 @@
 #include "internalRpcUtils.h"
+#include <psapi.h>
+#include <strsafe.h>
 #include <list>
 #include <sstream>
+#include <iostream>
+#include <fstream>
 
+#pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "strsafe.lib")
+
+#define MAX_DRIVE_INDEX 26
 
 //--------------------------------------------------------------------------
 BOOL __fastcall isStandardCharacter(_In_ const WCHAR wc)
@@ -41,6 +49,67 @@ std::string narrow(
 
 	return std::string(ws.begin(), ws.end());
 }
+
+//-------------------------------------------------------------------------
+std::string get_base_filename(const TCHAR* filepath) {
+	std::string strfilepath(filepath);
+	size_t pos = strfilepath.rfind(_T("\\"));
+	if (pos == std::string::npos)
+		return strfilepath;
+	if (pos == 0)
+		return strfilepath;
+	return strfilepath.substr(pos + 1, strfilepath.length());
+}
+
+//-------------------------------------------------------------------------
+BOOL get_module_filename(HANDLE hProcess, VOID* pAddress, WCHAR *ModuleName)
+{
+	DWORD						DriveMask;
+	WCHAR						DriveIdx;
+	WCHAR						NativeLocation[RPC_MAX_LENGTH];
+	WCHAR						DeviceName[RPC_MAX_LENGTH];
+	WCHAR*						pPath;
+	WCHAR						DosDevice[] = L"X:";
+	BOOL						bResult = FALSE;
+
+
+	//
+	// Get the native mapped file name containing the specified address
+	//
+	if (!GetMappedFileNameW(hProcess, pAddress, NativeLocation, _countof(NativeLocation))) goto End;
+	//
+	// Get the corresponding Win32 path
+	//
+	DriveMask = GetLogicalDrives();
+	for (DriveIdx = 0; DriveIdx < MAX_DRIVE_INDEX; DriveIdx++)
+	{
+		if (DriveMask & (1 << DriveIdx))
+		{
+			DosDevice[0] = L'A' + DriveIdx;
+			if (QueryDosDeviceW(DosDevice, DeviceName, _countof(DeviceName)) != 0)
+			{
+				pPath = wcsstr(NativeLocation, DeviceName);
+				if (pPath != NULL)
+				{
+					StringCbPrintfW(ModuleName, MAX_PATH * 2, L"%s%s", DosDevice, NativeLocation + wcslen(DeviceName));
+					bResult = TRUE;
+					break;
+				}
+			}
+		}
+	}
+End:
+	return bResult;
+}
+
+//--------------------------------------------------------------------------
+BOOL is_file_exist(const TCHAR *fileName)
+{
+	std::ifstream infile(fileName);
+	return infile.good();
+}
+
+
 
 
 //-------------------------------------------------------------------------

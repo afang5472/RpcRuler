@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #ifdef _DEBUG
 	#define _CRTDBG_MAP_ALLOC
@@ -33,7 +34,7 @@ extern "C" {
 	VOID*	__fastcall RpcDecompilerInit(RpcViewHelper_T* pRpcViewHelper, RpcDecompilerInfo_T* pDecompilerInfo);	//returns NULL in case of failure
 	VOID	__fastcall RpcDecompilerUninit(VOID* pRpcDecompilerCtxt);
 
-
+	BOOL	__fastcall RpcDecompilerExportAllProcedures(VOID* pRpcDecompilerCtxt, CHAR* pOutputDirectory);
 	BOOL	__fastcall RpcDecompilerPrintAllProcedures(VOID* pRpcDecompilerCtxt);
 	BOOL	__fastcall RpcDecompilerPrintProcedure(VOID* pRpcDecompilerCtxt, UINT ProcIndex);
 	BOOL	__fastcall RpcDecompilerPrintOneProcedure(VOID* pRpcDecompilerCtxt, UINT ProcIndex, std::list<TypeToDefine>& listProcType, std::ostringstream& ossProc);
@@ -54,7 +55,8 @@ extern "C" {
 		&RpcDecompilerInit,
 		&RpcDecompilerUninit,
 		&RpcDecompilerPrintProcedure,
-		&RpcDecompilerPrintAllProceduresNew,
+		&RpcDecompilerExportAllProcedures,
+		&RpcDecompilerPrintAllProcedures,
 	};
 
 
@@ -840,6 +842,140 @@ End:;
 
 		return TRUE;
 	}//end RpcDecompilerPrintAllProcedures
+
+		//------------ Clone of RpcDecompilerPrintAllProcedures --------------------------
+	BOOL __fastcall RpcDecompilerExportAllProcedures(VOID* pContext, CHAR *pOutputDirectory)
+	{
+
+		RpcDecompilerCtxt_T*	pRpcDecompilerCtxt = (RpcDecompilerCtxt_T*)pContext;
+		UINT					uProcIdx;
+		std::list<TypeToDefine>			listProcType;
+		std::ostringstream		ossHeader;
+		std::ostringstream		ossProc;
+		std::ostringstream		ossType;
+
+		if (pRpcDecompilerCtxt == NULL)
+		{
+			return FALSE;
+		}
+		if (pRpcDecompilerCtxt->pRpcViewHelper == NULL)
+		{
+			return FALSE;
+		}
+		if (pRpcDecompilerCtxt->pRpcDecompilerInfo == NULL)
+		{
+			return FALSE;
+		}
+
+		RPC_DEBUG_FN((UCHAR*)"RpcDecompilerPrintAllProcedures\n");
+		if (pRpcDecompilerCtxt->pRpcDecompilerInfo->pProcFormatString == NULL)
+		{
+			RPC_DEBUG_FN((UCHAR*)"Cannot decompile inlined stub!\n");
+			//return FALSE;
+		}
+
+
+		RpcPrintInformation(pContext, ossHeader);
+		RpcDecompilerPrintProlog(pContext, ossHeader);
+
+
+		// display Interface name
+
+		ossHeader << "\n\ninterface ";
+		// is there a default if name defined ?
+		if (wcslen(pRpcDecompilerCtxt->pRpcDecompilerInfo->InterfaceName) > 0)
+		{
+			size_t szConverted = 0;
+			size_t sz = wcslen(pRpcDecompilerCtxt->pRpcDecompilerInfo->InterfaceName) + 1;
+			char* pTmp = (char*)pRpcDecompilerCtxt->pRpcViewHelper->RpcAlloc(sz);
+
+			if (pTmp != NULL)
+			{
+				ZeroMemory(pTmp, sz);
+
+				wcstombs_s(&szConverted, pTmp, sz, pRpcDecompilerCtxt->pRpcDecompilerInfo->InterfaceName, sz);
+
+				ossHeader << pTmp;
+				pRpcDecompilerCtxt->pRpcViewHelper->RpcFree(pTmp);
+			}
+
+			//ossHeader << narrow(std::wstring(pRpcDecompilerCtxt->pRpcDecompilerInfo->InterfaceName)) <<" \n{\n";
+
+
+			/*RPC_DEBUG_FN((UCHAR*) "[ERROR] an error has occured while decompilating proc : %d \n",uProcIdx);
+			ossProc << "[ERROR] an error has occured while decompiling proc : "<<uProcIdx<<std::endl;
+			RPC_PRINT_FN ((UCHAR*)ossHeader.str().c_str());
+			RPC_PRINT_FN((UCHAR*)ossProc.str().c_str());
+			return FALSE;*/
+		}
+		else
+		{
+			//ossHeader << narrow(std::wstring(DEFAULT_IF_NAME)) <<" \n{\n";
+			ossHeader << DEFAULT_IF_NAME << " \n{\n";
+		}
+		RPC_DEBUG_FN((UCHAR*)"\ninterface %ls\n{\n", DEFAULT_IF_NAME);
+
+		//Decompile each proc
+		for (uProcIdx = 0; uProcIdx < pRpcDecompilerCtxt->pRpcDecompilerInfo->NumberOfProcedures; uProcIdx++)
+		{
+
+			// select decompile method
+			//if(pRpcDecompilerCtxt->pRpcDecompilerInfo->pbFunctionInterpreted[uProcIdx] == TRUE)
+			//{
+				// interpreted case
+			if (RpcDecompilerPrintOneProcedure(pContext, uProcIdx, listProcType, ossProc) == FALSE)
+			{
+				RPC_DEBUG_FN((UCHAR*) "[ERROR] an error has occured while decompiling proc : %d \n", uProcIdx);
+				ossProc << "[ERROR] an error has occured while decompiling proc : " << uProcIdx << std::endl;
+			}
+		}
+
+		//		}
+
+		ossProc << "\n\n}\n";
+
+
+
+		// dump type list accorded to saved types offset 
+
+		RpcDecompilerPrintAllTypesInList(pContext, listProcType, ossType);
+
+		// and export the dump content
+		// Get the interface's uuid
+		RPC_CSTR pUuidString = NULL;
+		UuidToStringA((const UUID*)&pRpcDecompilerCtxt->pRpcDecompilerInfo->pIfId->Uuid, &pUuidString);
+
+		// Get the module the interface associated
+		WCHAR wDllFilePath[MAX_PATH] = { 0 };
+		CHAR DllFilePath[MAX_PATH] = { 0 };
+		HANDLE hProcess = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, FALSE, pRpcDecompilerCtxt->pRpcModuleInfo->Pid);
+		size_t len;
+		if (get_module_filename(hProcess, (void*)pRpcDecompilerCtxt->pRpcModuleInfo->pModuleBase, wDllFilePath))
+			wcstombs_s(&len, DllFilePath, sizeof(DllFilePath), wDllFilePath, MAX_PATH);
+		else
+			strcpy_s(DllFilePath, "modulenamenotfound");
+
+		std::string dllfn = get_base_filename(DllFilePath);
+
+		// Get the final interface file path
+		CHAR Interfacefp[MAX_PATH] = { 0 };
+		size_t pos = dllfn.rfind(".");
+		if (pos != std::string::npos)
+			snprintf(Interfacefp, MAX_PATH, "%s/%s_%s.txt", pOutputDirectory, pUuidString, dllfn.replace(pos, 1, "_").c_str());
+		else
+			snprintf(Interfacefp, MAX_PATH, "%s/%s_%s.txt", pOutputDirectory, pUuidString, dllfn.c_str());
+
+		// Delete the existing file if it exists
+		if (is_file_exist(Interfacefp))
+			DeleteFile(Interfacefp);
+
+		RPC_EXPORT_INTERFACE(Interfacefp, (const char*)ossHeader.str().c_str());
+		RPC_EXPORT_INTERFACE(Interfacefp, (const char*)ossType.str().c_str());
+		RPC_EXPORT_INTERFACE(Interfacefp, (const char*)ossProc.str().c_str());
+
+		return TRUE;
+	}//end RpcDecompilerExportAllProcedures
+
 
 	BOOL	__fastcall RpcDecompilerPrintAllProceduresNew(VOID* pContext)
 	{

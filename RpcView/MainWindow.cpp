@@ -31,6 +31,8 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+extern int		DecompileAllInterfaces(RpcCore_T* pRpcCore);
+extern int		DecompileAllInterfaces(RpcCore_T* pRpcCore, const char *OutpuDirectory);
 
 extern ULONG	NTAPI DecompilerExceptionFilter(EXCEPTION_POINTERS* pExceptionPointers);
 extern HMODULE	NTAPI LoadDecompilerEngine(RpcDecompilerHelper_T** ppRpcDecompilerHelper);
@@ -300,6 +302,16 @@ End:
 	}
 	return;
 }
+
+//------------------------------------------------------------------------------
+void MainWindow_C::DecompileAllInterfaces()
+{
+	QString OutputDirectory = QFileDialog::getExistingDirectory(this, tr("Choose the directory all interfaces will be saved to"), ".", QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+	QMessageBox::information(this, "Output Directory", OutputDirectory);
+	::DecompileAllInterfaces(&gRpcCoreManager, OutputDirectory.toLatin1());
+	return;
+}
+
 
 
 //------------------------------------------------------------------------------
@@ -578,9 +590,11 @@ void MainWindow_C::SetupMenu()
 	QMenuBar*	pMenuBar					=	new QMenuBar(this);
 	//
 	// File
+
 	//
 	QMenu*		pMenuFile					=	pMenuBar->addMenu("&File");
 	QAction*	pActionAllProcessesDetails	=	pMenuFile->addAction("Show &Details for All Processes",this,SLOT(ViewDetailsForAllProcesses()));
+	pMenuFile->addAction("Decomp&ile All Interfaces", this, SLOT(DecompileAllInterfaces()));
 	pMenuFile->addAction("E&xit",this,SLOT(Exit()));
 	//
 	// Option

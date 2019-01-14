@@ -45,7 +45,7 @@ private slots:
 	void Help();
 	void RefreshViews();
 	void ViewDetailsForAllProcesses();
-	//--
+	void DecompileAllInterfaces();
 	void SetUpdateSpeedAsFast();
 	void SetUpdateSpeedAsNormal();
 	void SetUpdateSpeedAsBelowNormal();

@@ -48,12 +48,14 @@ typedef struct _RpcDecompilerInfo_T{
 typedef VOID*	(__fastcall* RpcDecompilerInitFn_T)(RpcViewHelper_T* pRpcViewHelper, RpcDecompilerInfo_T* pDecompilerInfo);	//returns NULL in case of failure
 typedef VOID	(__fastcall* RpcDecompilerUninitFn_T)(VOID* pRpcDecompilerCtxt);
 typedef BOOL	(__fastcall* RpcDecompilerPrintProcedureFn_T)(VOID* pRpcDecompilerCtxt, UINT ProcIndex);
+typedef BOOL(__fastcall* RpcDecompilerExportAllProceduresFn_T)(VOID* pRpcDecompilerCtxt, CHAR *pOutputDirectory);
 typedef BOOL	(__fastcall* RpcDecompilerPrintAllProceduresFn_T)(VOID* pRpcDecompilerCtxt);
 
 typedef struct _RpcDecompilerHelper_T{
 	RpcDecompilerInitFn_T				RpcDecompilerInitFn;
 	RpcDecompilerUninitFn_T				RpcDecompilerUninitFn;
 	RpcDecompilerPrintProcedureFn_T		RpcDecompilerPrintProcedureFn;
+	RpcDecompilerExportAllProceduresFn_T RpcDecompilerExportAllProceduresFn;
 	RpcDecompilerPrintAllProceduresFn_T	RpcDecompilerPrintAllProceduresFn;
 }RpcDecompilerHelper_T;
 
