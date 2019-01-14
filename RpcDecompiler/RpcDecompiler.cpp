@@ -412,7 +412,7 @@ END:
 			}
 			else
 			{
-				paramSizeInBytes = OIF_PARAM_SIZE; //TODO : traiter le cas où codage pas OIF
+				paramSizeInBytes = OIF_PARAM_SIZE; //TODO : traiter le cas o?codage pas OIF
 			}
 			paramOffset += paramSizeInBytes;//paramSizeInBytes;
 			numParam++;
@@ -533,7 +533,7 @@ End:
 			}
 			else
 			{
-				paramSizeInBytes = OIF_PARAM_SIZE; //TODO : traiter le cas où codage pas OIF
+				paramSizeInBytes = OIF_PARAM_SIZE; //TODO : traiter le cas o?codage pas OIF
 			}
 			paramOffset += paramSizeInBytes;//paramSizeInBytes;
 			numParam++;
